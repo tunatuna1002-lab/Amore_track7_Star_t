@@ -1,0 +1,220 @@
+# Laneige Ranking Collector - Selector Configuration
+# Externalized CSS/XPath selectors for maintainability
+#
+# IMPORTANT: These selectors MUST be verified against live pages before production use.
+# Mark selectors with TODO comments where verification is needed.
+#
+# Each market has:
+#   - primary: First attempt selectors
+#   - fallback: Backup selectors if primary fails
+#   - heuristic: Structural patterns for last-resort parsing
+
+amazon_us:
+  # Amazon Best Sellers page selectors
+  # TODO: Verify these selectors against live Amazon Best Sellers pages
+
+  primary:
+    # Container for all ranked items
+    item_container: "div#gridItemRoot"
+
+    # Individual product card
+    product_card: "div[data-asin]"
+
+    # Rank number (often shown as "#1", "#2", etc.)
+    rank:
+      css: "span.zg-bdg-text"
+      # Alternative: attribute-based
+      attr: null
+
+    # Product name/title
+    product_name:
+      css: "a.a-link-normal span div"
+      # Alternative longer selector
+      alt_css: "div._cDEzb_p13n-sc-css-line-clamp-3_g3dy1"
+
+    # Product URL (href from the product link)
+    product_url:
+      css: "a.a-link-normal"
+      attr: "href"
+
+    # Brand name (may not always be available on list page)
+    brand:
+      css: "span.a-size-small.a-color-base"
+      # Brand is often not reliably available on Best Seller list pages
+      optional: true
+
+    # Pagination - next page link
+    pagination:
+      next_page_css: "li.a-last a"
+      next_page_attr: "href"
+
+  fallback:
+    # Fallback selectors if primary fails
+    item_container: "div.p13n-desktop-grid"
+    product_card: "div.a-cardui"
+
+    rank:
+      css: "span.zg-badge-text"
+
+    product_name:
+      css: "div.p13n-sc-truncate-desktop-type2"
+      alt_css: "span.a-size-medium.a-color-base"
+
+    product_url:
+      css: "a[href*='/dp/']"
+      attr: "href"
+
+    brand:
+      css: "span.a-size-small"
+      optional: true
+
+    pagination:
+      next_page_css: "ul.a-pagination li.a-last a"
+      next_page_attr: "href"
+
+  heuristic:
+    # Structural heuristics for last-resort parsing
+    # These patterns look for common structural elements
+
+    # Look for numbered badges
+    rank_pattern: "#(\\d+)"
+
+    # Product links typically contain /dp/ followed by ASIN
+    product_url_pattern: "/dp/[A-Z0-9]{10}"
+
+    # Product containers often have data-asin attribute
+    container_attr: "data-asin"
+
+    # Common class patterns for product names
+    name_class_patterns:
+      - "truncate"
+      - "line-clamp"
+      - "product-title"
+
+
+cosme_jp:
+  # @cosme ranking page selectors
+  # TODO: Verify these selectors against live @cosme pages
+
+  primary:
+    # Container for ranked items (ranking list)
+    item_container: "div.ranking-list"
+
+    # Individual product card in ranking
+    product_card: "div.ranking-product-item"
+
+    # Rank number
+    rank:
+      css: "span.ranking-number"
+      # Alternative: from structured data
+      attr: "data-rank"
+
+    # Product name
+    product_name:
+      css: "p.product-name a"
+      alt_css: "a.product-name"
+
+    # Product URL
+    product_url:
+      css: "a.product-link"
+      attr: "href"
+
+    # Brand name
+    brand:
+      css: "p.brand-name"
+      alt_css: "span.brand"
+      optional: true
+
+    # Pagination
+    pagination:
+      next_page_css: "a.next-page"
+      next_page_attr: "href"
+
+  fallback:
+    # Fallback selectors
+    item_container: "ul.product-list"
+    product_card: "li.product-item"
+
+    rank:
+      css: "span.rank"
+      alt_css: "div.ranking-badge"
+
+    product_name:
+      css: "h3.product-title a"
+      alt_css: "div.product-info a"
+
+    product_url:
+      css: "a[href*='/products/']"
+      attr: "href"
+
+    brand:
+      css: "span.brand-name"
+      optional: true
+
+    pagination:
+      next_page_css: "nav.pagination a[rel='next']"
+      next_page_attr: "href"
+
+  heuristic:
+    # Structural heuristics for @cosme
+
+    # Rank patterns (Japanese may use 位 suffix)
+    rank_pattern: "(\\d+)位?"
+
+    # Product URL patterns
+    product_url_pattern: "/products/\\d+"
+
+    # Common class patterns
+    name_class_patterns:
+      - "product-name"
+      - "item-name"
+      - "title"
+
+    # Container class patterns
+    container_class_patterns:
+      - "ranking"
+      - "product"
+      - "item"
+
+
+# Common patterns used across markets
+common:
+  # HTTP status codes that indicate blocking/rate limiting
+  blocking_status_codes:
+    - 403  # Forbidden
+    - 429  # Too Many Requests
+    - 503  # Service Unavailable
+
+  # Patterns in HTML that suggest CAPTCHA or blocking
+  # Note: Use specific phrases to avoid false positives in JavaScript code
+  captcha_indicators:
+    - "captcha"
+    - "robot check"
+    - "verify you are human"
+    - "access denied"
+    - "access blocked"
+    - "rate limited"
+    - "too many requests"
+    - "ip blocked"
+
+  # Redirect patterns that suggest blocking
+  suspicious_redirect_patterns:
+    - "/errors/"
+    - "/blocked"
+    - "/captcha"
+    - "sorry"
+
+
+# Selector validation rules
+validation:
+  # Minimum expected items per page
+  min_items_per_page: 1
+
+  # Maximum reasonable items per page
+  max_items_per_page: 100
+
+  # Required fields for a valid ranking entry
+  required_fields:
+    - rank
+    - product_name
+    - product_url

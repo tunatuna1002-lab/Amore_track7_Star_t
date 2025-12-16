@@ -1,0 +1,33 @@
+<body class="ranking reset-ad">
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-M3KXQCX"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+<div id="container">
+
+
+<div id="tagline">
+<h1>化粧品・コスメ・美容の人気おすすめランキング</h1>
+</div>
+
+<script type="text/javascript" src="https://pc.assets-cosme.net/js/general/pc/cmn-pf-nav.js?dac9ed453529995333b4486676084c77e8f8fadb" charset="utf-8" ></script>
+<div id="cmn-pf-nav">
+<div id="cmn-pf-nav-inr" class="clearfix">
+<input id="cmn-pf-nav-dmn" type="hidden" value=".cosme.net" />
+
+<div class="idt-info clearfix">
+<a href="https://point.cosme.net/" target="_blank" id="cmn-pf-nav-tagline"><p class="pf-lead">おトクにキレイになる情報が満載！</p></a>
+<div class="new-arrival">
+<a rel="nofollow" href="javascript:void(0)" id="cmn-header-latest-information">新着おトク情報<span id="cmn-pf-nav-camp-cnt"></span></a>
+<div class="info">
+<div class="inr">
+<ul id="cmn-pf-nav-campaign">
+<li class="cmn-pf-nav-camp-list" id="cmn-pf-nav-camp-list-1">
+<a href="https://point.cosme.net/challengerally" target="_blank" id="a-cmn-header-camp-list-1"><img src="//cache-cdn.cosme.net/media/common_headers/8466520.png" width="55" height="30" alt="">【ためるチャレンジ】ボーナスコインGET<span id="cmn-pf-nav-camp-list-1-new" style="display: none;">N</span></a>
+<input id="cmn-pf-nav-camp-list-1-at" type="hidden" value="1667865600" />
+<input id="cmn-pf-nav-camp-list-1-unique" type="hidden" value="2680" />
+</li>
+<li class="cmn-pf-nav-camp-list" id="cmn-pf-nav-camp-list-2">
+<a href="https://point.cosme.net/tameru/stamp?navi-point" target="_blank" id="a-cmn-header-camp-list-2"><img src="//cache-cdn.cosme.net/media/common_headers/8466524.png" width="55" height="30" alt="">【スタンプカード】毎日押して大量コイン☆<span id="cmn-pf-nav-camp-list-2-new" style="display: none;">N</span></a>
+<input id="cmn-pf-nav-camp-list-2-at" type="hidden" value="1598929200" />
+<input id="cmn-pf-nav-camp-list-2-unique" type="hid

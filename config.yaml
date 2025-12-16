@@ -1,0 +1,125 @@
+# Laneige Ranking Collector - Configuration
+# MVP: Ranking-only, compliance-first
+
+# General settings
+project_name: "laneige_ranking_collector"
+version: "1.0.0-mvp"
+
+# Compliance settings (HARD RULES - DO NOT MODIFY WITHOUT REVIEW)
+compliance:
+  # Daily request budget - HARD STOP circuit breaker
+  daily_budget: 25
+
+  # Delay between requests (seconds)
+  delay_range_s:
+    min: 3
+    max: 8
+
+  # If robots.txt specifies Crawl-delay, use the larger of:
+  # robots Crawl-delay OR our configured min delay
+  respect_robots_crawl_delay: true
+
+  # Retry policy for transient errors (429, 503)
+  retry:
+    max_retries: 3
+    backoff_base_s: 5
+    backoff_multiplier: 2  # exponential: 5s, 10s, 20s
+
+  # Kill-switch: stop after N consecutive failures
+  consecutive_failure_limit: 5
+
+  # Concurrency (MUST be 1 for compliance)
+  concurrency: 1
+
+  # User-Agent (transparent, identifiable)
+  user_agent: "LaneigeRankingBot/1.0 (Research Project; +contact@example.com)"
+
+# Data collection settings
+collection:
+  # Target top N rankings to collect per category
+  top_n_target: 100
+
+  # Filter for Laneige products only (case-insensitive)
+  brand_filter:
+    enabled: false  # Set to true to only save Laneige products
+    keywords:
+      - "laneige"
+      - "라네즈"
+
+  # Schedule (KST timezone)
+  schedule_kst: "09:00"
+  timezone: "Asia/Seoul"
+
+# Storage settings
+storage:
+  # Output Excel file path
+  output_file: "data/ranking_data.xlsx"
+
+  # Sheet names
+  sheets:
+    rank_history: "rank_history_min"
+    run_log: "run_log"
+
+# Insights settings
+insights:
+  # TopN Streak thresholds
+  top_n_thresholds:
+    - 5
+    - 10
+    - 100
+
+  # Rank Shock threshold (absolute change)
+  rank_shock_threshold: 3
+
+  # New Entry/Exit lookback period (days)
+  lookback_days: 7
+
+# Categories to collect
+categories:
+  # Amazon US Best Sellers (5 categories)
+  - url: "https://www.amazon.com/Best-Sellers-Beauty-Personal-Care/zgbs/beauty/ref=zg_bs_nav_beauty_0"
+    category_key: "beauty_overall"
+    market: "amazon_us"
+
+  - url: "https://www.amazon.com/Best-Sellers-Beauty-Personal-Care-Lip-Care-Products/zgbs/beauty/3761351/ref=zg_bs_nav_beauty_2_11060451"
+    category_key: "lip_care_products"
+    market: "amazon_us"
+
+  - url: "https://www.amazon.com/Best-Sellers-Beauty-Personal-Care-Skin-Care-Products/zgbs/beauty/11060451/ref=zg_bs_nav_beauty_1"
+    category_key: "skin_care_products"
+    market: "amazon_us"
+
+  - url: "https://www.amazon.com/Best-Sellers-Beauty-Personal-Care-Lip-Makeup/zgbs/beauty/11059031/ref=zg_bs_nav_beauty_2_11058281"
+    category_key: "lip_makeup"
+    market: "amazon_us"
+
+  - url: "https://www.amazon.com/Best-Sellers-Beauty-Personal-Care-Face-Powder/zgbs/beauty/11058971/ref=zg_bs_nav_beauty_3_11058691"
+    category_key: "face_powder"
+    market: "amazon_us"
+
+  # @cosme Japan Rankings (5 categories)
+  - url: "https://www.cosme.net/ranking/products"
+    category_key: "overall_ranking"
+    market: "cosme_jp"
+
+  - url: "https://www.cosme.net/categories/item/800/"
+    category_key: "item_800"
+    market: "cosme_jp"
+
+  - url: "https://www.cosme.net/categories/item/1005/"
+    category_key: "item_1005"
+    market: "cosme_jp"
+
+  - url: "https://www.cosme.net/categories/item/904/"
+    category_key: "item_904"
+    market: "cosme_jp"
+
+  - url: "https://www.cosme.net/categories/item/803/"
+    category_key: "item_803"
+    market: "cosme_jp"
+
+# Logging
+logging:
+  level: "INFO"
+  file: "logs/collector.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

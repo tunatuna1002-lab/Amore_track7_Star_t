@@ -1,0 +1,54 @@
+project:
+  name: "laneige-ranking-agent"
+  timezone: "Asia/Seoul"
+
+run:
+  schedule_kst: "01:00"          # daily run time (KST)
+  top_n_target: 100              # target TopN (collect what is available)
+  concurrency: 1
+  delay_seconds:
+    min: 3
+    max: 8
+  daily_request_budget: 25       # ranking-only MVP recommended cap
+  retry:
+    max_retries: 3
+    backoff_base_seconds: 2.0
+
+outputs:
+  excel_path: "data/rank_history.xlsx"
+  sheets:
+    rank_history: "rank_history_min"
+    run_log: "run_log"
+
+categories:
+  - market: "amazon_us"
+    category_key: "beauty_overall"
+    url: "https://www.amazon.com/Best-Sellers-Beauty-Personal-Care/zgbs/beauty/ref=zg_bs_nav_beauty_0"
+  - market: "amazon_us"
+    category_key: "lip_care_products"
+    url: "https://www.amazon.com/Best-Sellers-Beauty-Personal-Care-Lip-Care-Products/zgbs/beauty/3761351/ref=zg_bs_nav_beauty_2_11060451"
+  - market: "amazon_us"
+    category_key: "skin_care_products"
+    url: "https://www.amazon.com/Best-Sellers-Beauty-Personal-Care-Skin-Care-Products/zgbs/beauty/11060451/ref=zg_bs_nav_beauty_1"
+  - market: "amazon_us"
+    category_key: "lip_makeup"
+    url: "https://www.amazon.com/Best-Sellers-Beauty-Personal-Care-Lip-Makeup/zgbs/beauty/11059031/ref=zg_bs_nav_beauty_2_11058281"
+  - market: "amazon_us"
+    category_key: "face_powder"
+    url: "https://www.amazon.com/Best-Sellers-Beauty-Personal-Care-Face-Powder/zgbs/beauty/11058971/ref=zg_bs_nav_beauty_3_11058691"
+
+  - market: "cosme_jp"
+    category_key: "ranking_products"
+    url: "https://www.cosme.net/ranking/products"
+  - market: "cosme_jp"
+    category_key: "item_800"
+    url: "https://www.cosme.net/categories/item/800/"
+  - market: "cosme_jp"
+    category_key: "item_1005"
+    url: "https://www.cosme.net/categories/item/1005/"
+  - market: "cosme_jp"
+    category_key: "item_904"
+    url: "https://www.cosme.net/categories/item/904/"
+  - market: "cosme_jp"
+    category_key: "item_803"
+    url: "https://www.cosme.net/categories/item/803/"
