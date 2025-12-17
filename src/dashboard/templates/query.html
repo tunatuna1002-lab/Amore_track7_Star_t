@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}AI 질문 - LANEIGE Ranking Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">AI에게 질문하기</h1>
+        <p class="text-gray-500 mt-1">Graph-RAG 기반 자연어 질의응답</p>
+    </div>
+
+    <!-- Query Input -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">질문</label>
+                <textarea id="queryInput" 
+                          rows="3" 
+                          placeholder="예: 라네즈 립 슬리핑 마스크 현재 순위는?"
+                          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-laneige-500 focus:border-laneige-500 resize-none"></textarea>
+            </div>
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    Ctrl + Enter로 전송
+                </div>
+                <button onclick="submitQuery()" 
+                        id="submitBtn"
+                        class="px-6 py-2 bg-laneige-600 text-white font-medium rounded-lg hover:bg-laneige-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    질문하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Example Queries -->
+    <div class="bg-gray-50 rounded-xl p-6">
+        <h3 class="text-sm font-medium text-gray-700 mb-3">예시 질문</h3>
+        <div class="flex flex-wrap gap-2">
+            <button onclick="setQuery('라네즈 현재 순위는?')" 
+                    class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-laneige-300">
+                라네즈 현재 순위는?
+            </button>
+            <button onclick="setQuery('아마존 립케어 Top 5')" 
+                    class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-laneige-300">
+                아마존 립케어 Top 5
+            </button>
+            <button onclick="setQuery('라네즈 최근 순위 변동은?')" 
+                    class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-laneige-300">
+                라네즈 최근 순위 변동은?
+            </button>
+            <button onclick="setQuery('라네즈 경쟁사 대비 순위')" 
+                    class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-laneige-300">
+                라네즈 경쟁사 대비 순위
+            </button>
+            <button onclick="setQuery('립 슬리핑 마스크 트렌드')" 
+                    class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-laneige-300">
+                립 슬리핑 마스크 트렌드
+            </button>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsSection" class="hidden space-y-4">
+        <!-- Answer Card -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 bg-gradient-to-r from-laneige-600 to-purple-600">
+                <h3 class="text-white font-medium">답변</h3>
+            </div>
+            <div class="p-6">
+                <div id="answerContent" class="prose max-w-none">
+                    <!-- Answer will be inserted here -->
+                </div>
+                <div id="answerMeta" class="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4 text-sm text-gray-500">
+                    <!-- Meta info -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Info (Collapsible) -->
+        <details class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <summary class="px-6 py-4 cursor-pointer hover:bg-gray-50 flex items-center justify-between">
+                <span class="font-medium text-gray-700">상세 정보</span>
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </summary>
+            <div class="px-6 pb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Intent & Entities -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">인텐트 & 엔티티</h4>
+                        <div id="entitiesInfo" class="bg-gray-50 rounded-lg p-4 text-sm">
+                            <!-- Entities will be inserted here -->
+                        </div>
+                    </div>
+                    <!-- Sources -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">소스</h4>
+                        <div id="sourcesInfo" class="bg-gray-50 rounded-lg p-4 text-sm">
+                            <!-- Sources will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <!-- Query History -->
+    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="font-medium text-gray-900">최근 질문</h3>
+        </div>
+        <div id="queryHistory" class="divide-y divide-gray-100">
+            <div class="px-6 py-4 text-sm text-gray-500">질문 기록이 없습니다.</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let queryHistory = [];
+
+    function setQuery(text) {
+        document.getElementById('queryInput').value = text;
+        document.getElementById('queryInput').focus();
+    }
+
+    async function submitQuery() {
+        const input = document.getElementById('queryInput');
+        const query = input.value.trim();
+        
+        if (!query) return;
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '처리 중...';
+
+        const resultsSection = document.getElementById('resultsSection');
+        const answerContent = document.getElementById('answerContent');
+        const answerMeta = document.getElementById('answerMeta');
+        
+        resultsSection.classList.remove('hidden');
+        answerContent.innerHTML = '<div class="loading text-gray-400">답변 생성 중...</div>';
+        answerMeta.innerHTML = '';
+
+        try {
+            const res = await fetch('/api/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
+            });
+            
+            const data = await res.json();
+            
+            if (data.success && data.result) {
+                const result = data.result;
+                
+                // Render answer (support markdown-like formatting)
+                answerContent.innerHTML = formatAnswer(result.answer || '답변을 생성할 수 없습니다.');
+                
+                // Render meta
+                answerMeta.innerHTML = `
+                    <span class="flex items-center">
+                        <span class="w-2 h-2 rounded-full ${result.confidence > 0.5 ? 'bg-green-500' : 'bg-yellow-500'} mr-2"></span>
+                        신뢰도: ${(result.confidence * 100).toFixed(0)}%
+                    </span>
+                    <span>처리 시간: ${result.processing_time_ms?.toFixed(0) || '-'}ms</span>
+                    <span>인텐트: ${result.intent || '-'}</span>
+                `;
+
+                // Render entities
+                document.getElementById('entitiesInfo').innerHTML = `
+                    <p><strong>인텐트:</strong> ${result.intent || '-'}</p>
+                    <p><strong>그래프 결과:</strong> ${result.graph_results_count || 0}건</p>
+                    <p><strong>규칙 매칭:</strong> ${result.rule_matches_count || 0}건</p>
+                `;
+
+                // Render sources
+                const sources = result.sources || [];
+                document.getElementById('sourcesInfo').innerHTML = sources.length > 0 
+                    ? sources.map(s => `<div class="py-1">• ${s}</div>`).join('')
+                    : '<p class="text-gray-400">소스 없음</p>';
+
+                // Add to history
+                addToHistory(query, result.answer);
+            } else {
+                answerContent.innerHTML = '<p class="text-red-500">오류가 발생했습니다.</p>';
+            }
+        } catch (error) {
+            answerContent.innerHTML = '<p class="text-red-500">서버 연결 오류</p>';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '질문하기';
+        }
+    }
+
+    function formatAnswer(text) {
+        // Simple markdown-like formatting
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n\n/g, '</p><p class="mt-3">')
+            .replace(/\n- /g, '</p><p class="mt-1 ml-4">• ')
+            .replace(/\n/g, '<br>')
+            .replace(/^/, '<p>')
+            .replace(/$/, '</p>');
+    }
+
+    function addToHistory(query, answer) {
+        queryHistory.unshift({ query, answer, timestamp: new Date() });
+        queryHistory = queryHistory.slice(0, 10); // Keep last 10
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const container = document.getElementById('queryHistory');
+        
+        if (queryHistory.length === 0) {
+            container.innerHTML = '<div class="px-6 py-4 text-sm text-gray-500">질문 기록이 없습니다.</div>';
+            return;
+        }
+
+        container.innerHTML = queryHistory.map((item, index) => `
+            <div class="px-6 py-4 hover:bg-gray-50 cursor-pointer" onclick="setQuery('${item.query.replace(/'/g, "\\'")}')">
+                <div class="flex justify-between items-start">
+                    <p class="font-medium text-gray-900">${item.query}</p>
+                    <span class="text-xs text-gray-400 ml-4 whitespace-nowrap">
+                        ${formatTime(item.timestamp)}
+                    </span>
+                </div>
+                <p class="text-sm text-gray-500 mt-1 line-clamp-2">
+                    ${item.answer.substring(0, 100)}${item.answer.length > 100 ? '...' : ''}
+                </p>
+            </div>
+        `).join('');
+    }
+
+    function formatTime(date) {
+        const now = new Date();
+        const diff = Math.floor((now - date) / 1000);
+        
+        if (diff < 60) return '방금 전';
+        if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+        return date.toLocaleDateString('ko-KR');
+    }
+
+    // Keyboard shortcut
+    document.getElementById('queryInput').addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+            submitQuery();
+        }
+    });
+
+    // Load history from localStorage
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const saved = localStorage.getItem('queryHistory');
+            if (saved) {
+                queryHistory = JSON.parse(saved).map(item => ({
+                    ...item,
+                    timestamp: new Date(item.timestamp)
+                }));
+                renderHistory();
+            }
+        } catch (e) {}
+    });
+
+    // Save history to localStorage
+    window.addEventListener('beforeunload', () => {
+        localStorage.setItem('queryHistory', JSON.stringify(queryHistory));
+    });
+</script>
+{% endblock %}
