@@ -1,0 +1,497 @@
+# =============================================================================
+# Laneige Ranking Collector - Knowledge Rules
+# =============================================================================
+# 기존 Insights 모듈(streak_analyzer, shock_detector, entry_exit_tracker)을
+# Knowledge 규칙 엔진 형태로 문서화
+#
+# 참조: Enhans 웨비나 "비정형 데이터를 자산으로 만드는 온톨로지 전략"
+# - Knowledge: 객체와 관계에 대한 비즈니스 규칙
+# - 추론 로직: 데이터에서 인사이트를 도출하는 규칙
+# =============================================================================
+
+version: "1.0.0"
+last_updated: "2024-12-17"
+author: "Amore_track7_Star_t Team"
+
+# -----------------------------------------------------------------------------
+# RULE ENGINE CONFIGURATION
+# -----------------------------------------------------------------------------
+config:
+  default_top_n_thresholds: [5, 10, 100]
+  default_lookback_days: 7
+  shock_threshold: 3  # |rank_change| >= 3
+  
+
+# -----------------------------------------------------------------------------
+# CLASSIFICATION RULES (분류 규칙)
+# -----------------------------------------------------------------------------
+# 제품에 자동 태그를 부여하는 규칙
+
+classification_rules:
+
+  # ---------------------------------------------------------------------------
+  # R001: Stable Leader (안정적 선두)
+  # ---------------------------------------------------------------------------
+  R001_stable_leader:
+    rule_id: "R001"
+    name: "Stable Leader"
+    description: "TopN에서 연속 N일 이상 유지하는 제품"
+    category: "streak"
+    priority: 1
+    
+    condition:
+      type: "streak"
+      parameters:
+        top_n_threshold: 5
+        min_consecutive_days: 7
+    
+    expression: "rank <= {top_n_threshold} AND consecutive_days >= {min_consecutive_days}"
+    
+    output:
+      tag: "stable_leader"
+      confidence: "high"
+      message_template: |
+        {product_name}은(는) {category_name}에서 Top {top_n_threshold}을 
+        {consecutive_days}일 연속 유지 중입니다.
+    
+    evidence_fields:
+      - rank
+      - consecutive_days
+      - streak_start
+      - streak_end
+      - category_key
+    
+    implementation:
+      module: "src/insights/streak_analyzer.py"
+      class: "StreakAnalyzer"
+      method: "analyze"
+      dataclass: "StreakInfo"
+
+  # ---------------------------------------------------------------------------
+  # R002: Rising Star (급상승 제품)
+  # ---------------------------------------------------------------------------
+  R002_rising_star:
+    rule_id: "R002"
+    name: "Rising Star"
+    description: "순위가 급격히 상승한 제품 (shock + improvement)"
+    category: "shock"
+    priority: 2
+    
+    condition:
+      type: "shock"
+      parameters:
+        min_improvement: 10  # 순위가 10 이상 상승
+    
+    expression: "rank_change >= {min_improvement}"
+    
+    output:
+      tag: "rising_star"
+      confidence: "medium"
+      message_template: |
+        {product_name}이(가) {previous_date}에 {previous_rank}위에서 
+        {date}에 {new_rank}위로 {change}순위 상승했습니다!
+    
+    evidence_fields:
+      - previous_rank
+      - new_rank
+      - change
+      - date
+      - previous_date
+    
+    implementation:
+      module: "src/insights/shock_detector.py"
+      class: "ShockDetector"
+      method: "get_improvements"
+      dataclass: "RankShock"
+      filter: "change >= 10"
+
+  # ---------------------------------------------------------------------------
+  # R003: At Risk (위험 신호)
+  # ---------------------------------------------------------------------------
+  R003_at_risk:
+    rule_id: "R003"
+    name: "At Risk"
+    description: "순위가 급격히 하락한 제품"
+    category: "shock"
+    priority: 2
+    
+    condition:
+      type: "shock"
+      parameters:
+        min_drop: -10  # 순위가 10 이상 하락
+    
+    expression: "rank_change <= {min_drop}"
+    
+    output:
+      tag: "at_risk"
+      confidence: "medium"
+      message_template: |
+        ⚠️ {product_name}이(가) {previous_date}에 {previous_rank}위에서 
+        {date}에 {new_rank}위로 {abs(change)}순위 하락했습니다.
+    
+    evidence_fields:
+      - previous_rank
+      - new_rank
+      - change
+      - date
+    
+    implementation:
+      module: "src/insights/shock_detector.py"
+      class: "ShockDetector"
+      method: "get_drops"
+      dataclass: "RankShock"
+      filter: "change <= -10"
+
+  # ---------------------------------------------------------------------------
+  # R004: New Entrant (신규 진입)
+  # ---------------------------------------------------------------------------
+  R004_new_entrant:
+    rule_id: "R004"
+    name: "New Entrant"
+    description: "lookback 기간 내 TopN에 처음 진입한 제품"
+    category: "entry"
+    priority: 3
+    
+    condition:
+      type: "entry"
+      parameters:
+        top_n_threshold: 100
+        lookback_days: 7
+    
+    expression: "first_appearance_in_top_n >= (today - {lookback_days})"
+    
+    output:
+      tag: "new_entrant"
+      confidence: "high"
+      message_template: |
+        🆕 {product_name}이(가) {entry_date}에 {category_name} Top {top_n_threshold}에 
+        {entry_rank}위로 신규 진입했습니다!
+    
+    evidence_fields:
+      - entry_date
+      - entry_rank
+      - top_n_threshold
+      - current_rank
+    
+    implementation:
+      module: "src/insights/entry_exit_tracker.py"
+      class: "EntryExitTracker"
+      method: "find_new_entries"
+      dataclass: "EntryEvent"
+
+  # ---------------------------------------------------------------------------
+  # R005: Recent Exit (최근 이탈)
+  # ---------------------------------------------------------------------------
+  R005_recent_exit:
+    rule_id: "R005"
+    name: "Recent Exit"
+    description: "lookback 기간 내 TopN에서 이탈한 제품"
+    category: "exit"
+    priority: 3
+    
+    condition:
+      type: "exit"
+      parameters:
+        top_n_threshold: 100
+        lookback_days: 7
+    
+    expression: "last_appearance_in_top_n <= (today - 1) AND last_appearance_in_top_n >= (today - {lookback_days})"
+    
+    output:
+      tag: "recent_exit"
+      confidence: "high"
+      message_template: |
+        📤 {product_name}이(가) {exit_date}에 {category_name} Top {top_n_threshold}에서 
+        이탈했습니다. (마지막 순위: {last_rank_in_top_n}위, 체류 기간: {days_in_top_n}일)
+    
+    evidence_fields:
+      - exit_date
+      - last_rank_in_top_n
+      - days_in_top_n
+      - top_n_threshold
+    
+    implementation:
+      module: "src/insights/entry_exit_tracker.py"
+      class: "EntryExitTracker"
+      method: "find_exits"
+      dataclass: "ExitEvent"
+
+  # ---------------------------------------------------------------------------
+  # R006: Global Hit (글로벌 히트) - Phase 2
+  # ---------------------------------------------------------------------------
+  R006_global_hit:
+    rule_id: "R006"
+    name: "Global Hit"
+    description: "Amazon US와 @cosme Japan 양쪽에서 동시에 Top 10인 제품"
+    category: "cross_market"
+    priority: 1
+    phase: 2
+    
+    condition:
+      type: "cross_market"
+      parameters:
+        amazon_top_n: 10
+        cosme_top_n: 10
+    
+    expression: "amazon_us_rank <= {amazon_top_n} AND cosme_jp_rank <= {cosme_top_n}"
+    
+    output:
+      tag: "global_hit"
+      confidence: "very_high"
+      message_template: |
+        🌍 {product_name}은(는) 글로벌 히트 제품입니다!
+        - Amazon US: {amazon_us_rank}위
+        - @cosme Japan: {cosme_jp_rank}위
+    
+    evidence_fields:
+      - amazon_us_rank
+      - cosme_jp_rank
+      - date
+    
+    implementation:
+      note: "Phase 2에서 구현 예정 - 제품 매칭 로직 필요"
+
+  # ---------------------------------------------------------------------------
+  # R007: Successful Launch (성공적 출시) - Phase 2
+  # ---------------------------------------------------------------------------
+  R007_successful_launch:
+    rule_id: "R007"
+    name: "Successful Launch"
+    description: "출시 후 30일 내 Top 100 진입"
+    category: "launch"
+    priority: 2
+    phase: 2
+    
+    condition:
+      type: "launch_success"
+      parameters:
+        days_since_launch: 30
+        top_n_threshold: 100
+    
+    expression: "days_since_launch <= {days_since_launch} AND rank <= {top_n_threshold}"
+    
+    output:
+      tag: "successful_launch"
+      confidence: "medium"
+      message_template: |
+        🚀 {product_name}은(는) 출시 {days_since_launch}일 만에 
+        Top {top_n_threshold}에 진입했습니다!
+    
+    evidence_fields:
+      - launch_date
+      - first_ranked_date
+      - days_since_launch
+      - entry_rank
+    
+    implementation:
+      note: "Phase 2에서 구현 예정 - launch_date 데이터 필요"
+
+
+# -----------------------------------------------------------------------------
+# INSIGHT GENERATION RULES (인사이트 생성 규칙)
+# -----------------------------------------------------------------------------
+# 분류 규칙의 결과를 조합하여 상위 인사이트 생성
+
+insight_rules:
+
+  # ---------------------------------------------------------------------------
+  # Market Leader Analysis
+  # ---------------------------------------------------------------------------
+  market_leader_insight:
+    name: "Market Leader Analysis"
+    description: "카테고리별 시장 선두 분석"
+    
+    inputs:
+      - rule: R001_stable_leader
+        threshold: 5
+      - rule: R004_new_entrant
+        as_threat: true
+    
+    output_template: |
+      ## {category_name} 시장 리더 분석
+      
+      ### 안정적 선두 그룹
+      {stable_leaders_list}
+      
+      ### 주목할 신규 진입자
+      {new_entrants_list}
+      
+      ### 권장 사항
+      {recommendations}
+
+  # ---------------------------------------------------------------------------
+  # Competitive Dynamics
+  # ---------------------------------------------------------------------------
+  competitive_dynamics_insight:
+    name: "Competitive Dynamics"
+    description: "경쟁 역학 분석"
+    
+    inputs:
+      - rule: R002_rising_star
+      - rule: R003_at_risk
+      - rule: R005_recent_exit
+    
+    output_template: |
+      ## 경쟁 역학 분석 ({date_range})
+      
+      ### 상승세 제품 (Rising Stars)
+      {rising_stars_list}
+      
+      ### 하락세 제품 (At Risk)
+      {at_risk_list}
+      
+      ### 최근 이탈 제품
+      {recent_exits_list}
+
+
+# -----------------------------------------------------------------------------
+# ALERT RULES (알림 규칙)
+# -----------------------------------------------------------------------------
+# 특정 조건 충족 시 알림 트리거
+
+alert_rules:
+
+  # ---------------------------------------------------------------------------
+  # Laneige Rank Drop Alert
+  # ---------------------------------------------------------------------------
+  laneige_rank_drop:
+    name: "Laneige Rank Drop Alert"
+    description: "라네즈 제품 순위 하락 시 알림"
+    priority: "high"
+    
+    condition:
+      brand_filter: "LANEIGE"
+      rule: R003_at_risk
+      additional: "change <= -5"
+    
+    action:
+      type: "alert"
+      channels: ["log", "report"]
+      message_template: |
+        ⚠️ ALERT: 라네즈 제품 순위 하락
+        제품: {product_name}
+        변동: {previous_rank}위 → {new_rank}위 ({change})
+        날짜: {date}
+        카테고리: {category_key}
+
+  # ---------------------------------------------------------------------------
+  # Top 5 Exit Alert
+  # ---------------------------------------------------------------------------
+  top5_exit:
+    name: "Top 5 Exit Alert"
+    description: "Top 5에서 이탈 시 알림"
+    priority: "medium"
+    
+    condition:
+      brand_filter: "LANEIGE"
+      rule: R005_recent_exit
+      additional: "top_n_threshold == 5"
+    
+    action:
+      type: "alert"
+      channels: ["log"]
+      message_template: |
+        📤 라네즈 제품 Top 5 이탈
+        제품: {product_name}
+        마지막 순위: {last_rank_in_top_n}위
+        체류 기간: {days_in_top_n}일
+
+
+# -----------------------------------------------------------------------------
+# IMPLEMENTATION MAPPING
+# -----------------------------------------------------------------------------
+# 현재 Insights 모듈과 Knowledge Rules 매핑
+
+implementation_mapping:
+
+  current_modules:
+    streak_analyzer:
+      file: "src/insights/streak_analyzer.py"
+      class: "StreakAnalyzer"
+      output: "StreakInfo"
+      rules_implemented:
+        - R001_stable_leader
+      
+      config_params:
+        top_n_thresholds:
+          type: "List[int]"
+          default: [5, 10, 100]
+          description: "추적할 TopN 임계값 목록"
+    
+    shock_detector:
+      file: "src/insights/shock_detector.py"
+      class: "ShockDetector"
+      output: "RankShock"
+      rules_implemented:
+        - R002_rising_star
+        - R003_at_risk
+      
+      config_params:
+        threshold:
+          type: "int"
+          default: 3
+          description: "순위 변동 임계값 (|change| >= threshold)"
+    
+    entry_exit_tracker:
+      file: "src/insights/entry_exit_tracker.py"
+      class: "EntryExitTracker"
+      output: ["EntryEvent", "ExitEvent"]
+      rules_implemented:
+        - R004_new_entrant
+        - R005_recent_exit
+      
+      config_params:
+        top_n_thresholds:
+          type: "List[int]"
+          default: [5, 10, 100]
+        lookback_days:
+          type: "int"
+          default: 7
+
+  orchestrator:
+    file: "src/insights/ranking_insights.py"
+    class: "RankingInsights"
+    description: "모든 인사이트 분석을 조율하는 오케스트레이터"
+    methods:
+      - generate_all_insights
+      - get_streak_summary
+      - get_shock_summary
+      - get_entry_exit_summary
+
+
+# -----------------------------------------------------------------------------
+# FUTURE ENHANCEMENTS (Phase 2+)
+# -----------------------------------------------------------------------------
+future_enhancements:
+
+  knowledge_engine:
+    description: "규칙 기반 추론 엔진"
+    features:
+      - "규칙 우선순위에 따른 실행 순서"
+      - "규칙 충돌 해결 (conflict resolution)"
+      - "규칙 체이닝 (rule chaining)"
+      - "동적 규칙 추가/수정"
+    
+    implementation_plan:
+      - step: 1
+        task: "KnowledgeRule dataclass 정의"
+      - step: 2
+        task: "RuleEngine 클래스 구현"
+      - step: 3
+        task: "기존 Insights 모듈을 Rule로 마이그레이션"
+      - step: 4
+        task: "YAML 기반 규칙 로더 구현"
+
+  cross_market_analysis:
+    description: "마켓 간 교차 분석"
+    features:
+      - "동일 제품 매칭 (Amazon ↔ @cosme)"
+      - "글로벌 히트 제품 식별"
+      - "지역별 성과 비교"
+
+  trend_prediction:
+    description: "트렌드 예측"
+    features:
+      - "시계열 패턴 분석"
+      - "계절성 탐지"
+      - "이벤트 영향 분석"

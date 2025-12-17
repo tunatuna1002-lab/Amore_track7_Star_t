@@ -1,0 +1,514 @@
+# =============================================================================
+# Laneige Ranking Collector - Ontology Schema
+# =============================================================================
+# 연구 보고서(Research_agent_design.pdf) 기반 온톨로지 정의
+# 
+# 참조: Enhans 웨비나 "비정형 데이터를 자산으로 만드는 온톨로지 전략"
+# - Entity: 핵심 개체 정의
+# - Relation: 개체 간 관계 정의
+# - Knowledge: 비즈니스 규칙 정의
+# =============================================================================
+
+version: "1.0.0"
+last_updated: "2024-12-17"
+author: "Amore_track7_Star_t Team"
+
+# -----------------------------------------------------------------------------
+# ENTITIES (핵심 개체)
+# -----------------------------------------------------------------------------
+entities:
+
+  # ---------------------------------------------------------------------------
+  # Product: 제품 정보
+  # ---------------------------------------------------------------------------
+  Product:
+    description: "수집 대상 제품 (예: Laneige Lip Sleeping Mask)"
+    attributes:
+      product_id:
+        type: string
+        description: "고유 식별자 (MD5 hash of product_url)"
+        required: true
+        example: "a1b2c3d4e5f6..."
+      
+      product_name_raw:
+        type: string
+        description: "원본 제품명 (크롤링된 그대로)"
+        required: true
+        example: "LANEIGE Lip Sleeping Mask"
+      
+      product_name_normalized:
+        type: string
+        description: "정규화된 제품명"
+        required: false
+        example: "Lip Sleeping Mask"
+      
+      product_url:
+        type: string
+        description: "제품 상세 페이지 URL"
+        required: true
+        example: "https://www.amazon.com/dp/B00BXZZZZZ"
+      
+      brand:
+        type: string
+        description: "브랜드명"
+        required: false
+        example: "LANEIGE"
+      
+      launch_date:
+        type: date
+        description: "출시일 (알 수 있는 경우)"
+        required: false
+        example: "2015-01-01"
+    
+    primary_key: product_id
+    
+    # Python dataclass 매핑
+    python_class: |
+      @dataclass
+      class ProductNode:
+          product_id: str
+          product_name_raw: str
+          product_url: str
+          product_name_normalized: Optional[str] = None
+          brand: Optional[str] = None
+          launch_date: Optional[datetime] = None
+
+  # ---------------------------------------------------------------------------
+  # Category: 카테고리 정보
+  # ---------------------------------------------------------------------------
+  Category:
+    description: "랭킹 카테고리 (예: Lip Care, Skin Care)"
+    attributes:
+      category_id:
+        type: string
+        description: "고유 식별자"
+        required: true
+        example: "amazon_us_lip_care"
+      
+      category_key:
+        type: string
+        description: "설정 파일의 카테고리 키"
+        required: true
+        example: "lip_care"
+      
+      category_name:
+        type: string
+        description: "표시용 카테고리 이름"
+        required: true
+        example: "Lip Care Products"
+      
+      category_url:
+        type: string
+        description: "카테고리 페이지 URL"
+        required: true
+        example: "https://www.amazon.com/Best-Sellers-Beauty-Lip-Care/..."
+      
+      platform_id:
+        type: string
+        description: "소속 플랫폼 ID (FK)"
+        required: true
+        example: "amazon_us"
+    
+    primary_key: category_id
+    
+    python_class: |
+      @dataclass
+      class CategoryNode:
+          category_id: str
+          category_key: str
+          category_name: str
+          category_url: str
+          platform_id: str
+
+  # ---------------------------------------------------------------------------
+  # Platform: 플랫폼 정보
+  # ---------------------------------------------------------------------------
+  Platform:
+    description: "데이터 소스 플랫폼"
+    attributes:
+      platform_id:
+        type: string
+        description: "고유 식별자"
+        required: true
+        enum: ["amazon_us", "cosme_jp"]
+      
+      platform_name:
+        type: string
+        description: "플랫폼 표시명"
+        required: true
+        example: "Amazon US"
+      
+      base_url:
+        type: string
+        description: "베이스 URL"
+        required: true
+        example: "https://www.amazon.com"
+      
+      ranking_type:
+        type: string
+        description: "랭킹 유형"
+        required: true
+        enum: ["sales_based", "review_based"]
+        note: "Amazon=sales_based (BSR), @cosme=review_based"
+      
+      update_frequency:
+        type: string
+        description: "업데이트 주기"
+        required: true
+        example: "hourly"  # Amazon: hourly, @cosme: semi-annual
+    
+    primary_key: platform_id
+    
+    instances:
+      amazon_us:
+        platform_id: "amazon_us"
+        platform_name: "Amazon US"
+        base_url: "https://www.amazon.com"
+        ranking_type: "sales_based"
+        update_frequency: "hourly"
+      
+      cosme_jp:
+        platform_id: "cosme_jp"
+        platform_name: "@cosme Japan"
+        base_url: "https://www.cosme.net"
+        ranking_type: "review_based"
+        update_frequency: "semi-annual"
+
+  # ---------------------------------------------------------------------------
+  # Ranking: 랭킹 스냅샷 (시계열 데이터)
+  # ---------------------------------------------------------------------------
+  Ranking:
+    description: "특정 시점의 제품 랭킹 정보"
+    attributes:
+      ranking_id:
+        type: string
+        description: "고유 식별자 (MD5 of composite key)"
+        required: true
+      
+      product_id:
+        type: string
+        description: "제품 ID (FK)"
+        required: true
+      
+      category_id:
+        type: string
+        description: "카테고리 ID (FK)"
+        required: true
+      
+      platform_id:
+        type: string
+        description: "플랫폼 ID (FK)"
+        required: true
+      
+      rank:
+        type: integer
+        description: "순위 (1부터 시작)"
+        required: true
+        constraints:
+          min: 1
+          max: 100
+      
+      price:
+        type: float
+        description: "가격 (현지 통화)"
+        required: false
+      
+      review_count:
+        type: integer
+        description: "리뷰 수"
+        required: false
+      
+      rating:
+        type: float
+        description: "평점 (0-5)"
+        required: false
+        constraints:
+          min: 0.0
+          max: 5.0
+      
+      recorded_at:
+        type: datetime
+        description: "기록 시각 (KST)"
+        required: true
+      
+      source_url:
+        type: string
+        description: "출처 URL (증거 링크)"
+        required: true
+    
+    primary_key: ranking_id
+    composite_key: ["date_kst", "market", "category_key", "rank", "product_url"]
+    
+    python_class: |
+      @dataclass
+      class RankingEdge:
+          ranking_id: str
+          product_id: str
+          category_id: str
+          platform_id: str
+          rank: int
+          recorded_at: datetime
+          source_url: str
+          price: Optional[float] = None
+          review_count: Optional[int] = None
+          rating: Optional[float] = None
+
+  # ---------------------------------------------------------------------------
+  # Brand: 브랜드 정보 (Phase 2 확장)
+  # ---------------------------------------------------------------------------
+  Brand:
+    description: "브랜드 정보 및 계층 구조"
+    attributes:
+      brand_id:
+        type: string
+        description: "고유 식별자"
+        required: true
+        example: "laneige"
+      
+      brand_name:
+        type: string
+        description: "브랜드명"
+        required: true
+        example: "LANEIGE"
+      
+      parent_company:
+        type: string
+        description: "모회사"
+        required: false
+        example: "Amorepacific"
+      
+      target_market:
+        type: array
+        description: "주요 타겟 시장"
+        required: false
+        example: ["global", "asia", "us"]
+    
+    primary_key: brand_id
+    phase: 2
+
+  # ---------------------------------------------------------------------------
+  # Event: 이벤트 정보 (Phase 2 확장)
+  # ---------------------------------------------------------------------------
+  Event:
+    description: "랭킹에 영향을 미치는 이벤트"
+    attributes:
+      event_id:
+        type: string
+        description: "고유 식별자"
+        required: true
+      
+      event_type:
+        type: string
+        description: "이벤트 유형"
+        required: true
+        enum: ["prime_day", "black_friday", "cosme_awards", "product_launch", "promotion"]
+      
+      event_date:
+        type: date
+        description: "이벤트 날짜"
+        required: true
+      
+      platform_id:
+        type: string
+        description: "관련 플랫폼"
+        required: false
+      
+      impact_scope:
+        type: string
+        description: "영향 범위"
+        required: false
+        enum: ["global", "category", "brand"]
+    
+    primary_key: event_id
+    phase: 2
+
+
+# -----------------------------------------------------------------------------
+# RELATIONS (관계 정의)
+# -----------------------------------------------------------------------------
+relations:
+
+  belongsTo:
+    description: "제품이 카테고리에 속함"
+    from_entity: Product
+    to_entity: Category
+    cardinality: "many-to-many"
+    note: "하나의 제품이 여러 카테고리에 동시 랭킹될 수 있음"
+    implementation: "category_key field in RankingSnapshot"
+
+  listedOn:
+    description: "제품이 플랫폼에 등록됨"
+    from_entity: Product
+    to_entity: Platform
+    cardinality: "many-to-many"
+    note: "동일 제품이 Amazon과 @cosme에 모두 있을 수 있음"
+    implementation: "market field in RankingSnapshot"
+
+  rankedAs:
+    description: "제품의 랭킹 기록"
+    from_entity: Product
+    to_entity: Ranking
+    cardinality: "one-to-many"
+    note: "하나의 제품이 여러 시점의 랭킹을 가짐 (시계열)"
+    implementation: "FK relationship via product_url"
+
+  recordedAt:
+    description: "랭킹이 기록된 시점"
+    from_entity: Ranking
+    to_entity: Time
+    cardinality: "many-to-one"
+    note: "date_kst field"
+    implementation: "date_kst field in RankingSnapshot"
+
+  competesWidth:
+    description: "동일 카테고리 내 경쟁 관계"
+    from_entity: Product
+    to_entity: Product
+    cardinality: "many-to-many"
+    note: "같은 카테고리, 같은 날짜에 랭킹된 제품들"
+    implementation: "Derived from same category_key + date_kst"
+    phase: 2
+
+  triggeredBy:
+    description: "랭킹 변동의 원인 이벤트"
+    from_entity: Ranking
+    to_entity: Event
+    cardinality: "many-to-one"
+    note: "프라임데이, @cosme Awards 등"
+    implementation: "Event matching by date proximity"
+    phase: 2
+
+  partOf:
+    description: "브랜드의 모회사 관계"
+    from_entity: Brand
+    to_entity: Brand
+    cardinality: "many-to-one"
+    note: "LANEIGE partOf Amorepacific"
+    implementation: "parent_company field"
+    phase: 2
+
+
+# -----------------------------------------------------------------------------
+# CURRENT IMPLEMENTATION MAPPING
+# -----------------------------------------------------------------------------
+# 현재 구현(RankingSnapshot)과 온톨로지 매핑
+
+implementation_mapping:
+  
+  RankingSnapshot_to_Ontology:
+    description: "현재 RankingSnapshot 필드와 온톨로지 Entity 매핑"
+    
+    fields:
+      date_kst:
+        ontology_entity: Ranking
+        ontology_attribute: recorded_at
+        note: "Time entity로 분리 가능"
+      
+      market:
+        ontology_entity: Platform
+        ontology_attribute: platform_id
+        values: {amazon_us: "amazon_us", cosme_jp: "cosme_jp"}
+      
+      category_key:
+        ontology_entity: Category
+        ontology_attribute: category_key
+      
+      rank:
+        ontology_entity: Ranking
+        ontology_attribute: rank
+      
+      product_name_raw:
+        ontology_entity: Product
+        ontology_attribute: product_name_raw
+      
+      brand_raw:
+        ontology_entity: Product
+        ontology_attribute: brand
+        note: "현재 optional, 리스트 페이지에서 제한적"
+      
+      product_url:
+        ontology_entity: Product
+        ontology_attribute: product_url
+        note: "product_id 생성에 사용 (MD5)"
+      
+      row_key:
+        ontology_entity: Ranking
+        ontology_attribute: ranking_id
+        note: "MD5 composite key"
+
+
+# -----------------------------------------------------------------------------
+# GRAPH TRAVERSAL PATTERNS
+# -----------------------------------------------------------------------------
+# Graph-RAG 구현 시 사용할 쿼리 패턴
+
+traversal_patterns:
+
+  get_current_rank:
+    description: "제품의 현재 순위 조회"
+    pattern: "Product → rankedAs → Ranking[latest] → rank"
+    example_query: "라네즈 립 슬리핑 마스크 현재 순위는?"
+    cypher: |
+      MATCH (p:Product {name: $product_name})-[:rankedAs]->(r:Ranking)
+      WHERE r.platform_id = $platform
+      RETURN r.rank
+      ORDER BY r.recorded_at DESC
+      LIMIT 1
+
+  get_rank_history:
+    description: "제품의 순위 히스토리 조회"
+    pattern: "Product → rankedAs → Ranking[] → recordedAt → Time"
+    example_query: "립 슬리핑 마스크 최근 30일 순위 변동"
+    cypher: |
+      MATCH (p:Product {name: $product_name})-[:rankedAs]->(r:Ranking)
+      WHERE r.recorded_at >= date() - duration('P30D')
+      RETURN r.recorded_at, r.rank
+      ORDER BY r.recorded_at
+
+  get_category_rankings:
+    description: "카테고리별 현재 랭킹 조회"
+    pattern: "Category ← belongsTo ← Product → rankedAs → Ranking[latest]"
+    example_query: "Amazon Lip Care 현재 Top 10"
+    cypher: |
+      MATCH (c:Category {key: $category_key})<-[:belongsTo]-(p:Product)-[:rankedAs]->(r:Ranking)
+      WHERE r.recorded_at = $latest_date
+      RETURN p.name, r.rank
+      ORDER BY r.rank
+      LIMIT 10
+
+  get_competitors:
+    description: "경쟁 제품 조회"
+    pattern: "Product → competesWidth → Product[]"
+    example_query: "라네즈 립 슬리핑 마스크 경쟁 제품들"
+    cypher: |
+      MATCH (p:Product {name: $product_name})-[:competesWidth]->(comp:Product)
+      RETURN comp.name, comp.brand
+    phase: 2
+
+
+# -----------------------------------------------------------------------------
+# VALIDATION RULES
+# -----------------------------------------------------------------------------
+validation_rules:
+  
+  entity_constraints:
+    Product:
+      - "product_url must be unique"
+      - "product_name_raw must not be empty"
+    
+    Ranking:
+      - "rank must be between 1 and 100"
+      - "recorded_at must not be future date"
+      - "composite key must be unique"
+    
+    Category:
+      - "category_key must match config.yaml"
+      - "platform_id must be valid enum"
+  
+  relation_constraints:
+    rankedAs:
+      - "Product must exist before Ranking"
+      - "Ranking.product_id must reference valid Product"
+    
+    belongsTo:
+      - "Category must exist in config.yaml"
