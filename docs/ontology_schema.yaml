@@ -10,7 +10,7 @@
 # =============================================================================
 
 version: "1.0.0"
-last_updated: "2024-12-17"
+last_updated: "2025-12-18"
 author: "Amore_track7_Star_t Team"
 
 # -----------------------------------------------------------------------------
@@ -360,7 +360,7 @@ relations:
     note: "date_kst field"
     implementation: "date_kst field in RankingSnapshot"
 
-  competesWidth:
+  competesWith:
     description: "동일 카테고리 내 경쟁 관계"
     from_entity: Product
     to_entity: Product
@@ -478,10 +478,10 @@ traversal_patterns:
 
   get_competitors:
     description: "경쟁 제품 조회"
-    pattern: "Product → competesWidth → Product[]"
+    pattern: "Product → competesWith → Product[]"
     example_query: "라네즈 립 슬리핑 마스크 경쟁 제품들"
     cypher: |
-      MATCH (p:Product {name: $product_name})-[:competesWidth]->(comp:Product)
+      MATCH (p:Product {name: $product_name})-[:competesWith]->(comp:Product)
       RETURN comp.name, comp.brand
     phase: 2
 

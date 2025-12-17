@@ -13,7 +13,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import ClassVar, Dict, List, Optional, Any
 
 from .entity_extractor import ExtractedEntities, QueryIntent
 from .graph_retriever import GraphContext
@@ -70,7 +70,7 @@ class ContextAssembler:
     """
     
     # Templates for different intents
-    CONTEXT_TEMPLATES = {
+    CONTEXT_TEMPLATES: ClassVar[Dict[QueryIntent, str]] = {
         QueryIntent.CURRENT_RANK: """
 ## 현재 순위 정보
 {graph_data}

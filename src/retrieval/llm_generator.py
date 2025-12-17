@@ -187,7 +187,7 @@ class LLMGenerator:
                 ).total_seconds() * 1000
                 return response
             except Exception as e:
-                logger.error(f"LLM generation failed: {e}")
+                logger.exception("LLM generation failed")
         
         # Fallback to template
         response = self._generate_with_template(query, context, context_assembler)
@@ -366,7 +366,7 @@ class StreamingLLMGenerator(LLMGenerator):
                     yield text
                     
         except Exception as e:
-            logger.error(f"Streaming generation failed: {e}")
+            logger.exception("Streaming generation failed")
             response = self._generate_with_template(query, context, context_assembler)
             yield response.text
 

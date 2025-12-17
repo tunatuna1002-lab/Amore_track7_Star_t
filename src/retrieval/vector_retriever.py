@@ -392,7 +392,7 @@ class VectorRetriever:
             return search_results
             
         except Exception as e:
-            logger.error(f"Vector search error: {e}")
+            logger.exception("Vector search error")
             return []
     
     def search_products(

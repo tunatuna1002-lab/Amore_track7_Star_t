@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Set
+from typing import ClassVar, Dict, List, Optional, Tuple, Set
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ class EntityExtractor:
     """
     
     # Known brands (case-insensitive)
-    KNOWN_BRANDS = {
+    KNOWN_BRANDS: ClassVar[Dict[str, List[str]]] = {
         "laneige": ["라네즈", "laneige"],
         "sulwhasoo": ["설화수", "sulwhasoo"],
         "innisfree": ["이니스프리", "innisfree"],
@@ -119,7 +119,7 @@ class EntityExtractor:
     }
     
     # Known categories
-    KNOWN_CATEGORIES = {
+    KNOWN_CATEGORIES: ClassVar[Dict[str, List[str]]] = {
         "lip_care": ["립케어", "립 케어", "lip care", "lip", "립"],
         "lip_sleeping_mask": ["립 슬리핑 마스크", "lip sleeping mask", "립슬리핑마스크"],
         "lip_balm": ["립밤", "lip balm", "립 밤"],
@@ -129,13 +129,13 @@ class EntityExtractor:
     }
     
     # Known platforms
-    KNOWN_PLATFORMS = {
+    KNOWN_PLATFORMS: ClassVar[Dict[str, List[str]]] = {
         "amazon_us": ["아마존", "amazon", "amazon us", "아마존 미국"],
         "cosme_jp": ["코스메", "@cosme", "cosme", "앳코스메", "일본"],
     }
     
     # Intent keywords
-    INTENT_PATTERNS = {
+    INTENT_PATTERNS: ClassVar[Dict[QueryIntent, List[str]]] = {
         QueryIntent.CURRENT_RANK: [
             r"현재\s*순위", r"지금\s*순위", r"오늘\s*순위",
             r"current\s*rank", r"순위가?\s*(어떻|얼마|몇)",
@@ -177,7 +177,7 @@ class EntityExtractor:
     }
     
     # Time expression patterns
-    TIME_PATTERNS = {
+    TIME_PATTERNS: ClassVar[Dict[str, Tuple[int, int]]] = {
         "today": (0, 0),
         "오늘": (0, 0),
         "yesterday": (-1, -1),

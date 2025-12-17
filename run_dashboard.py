@@ -126,6 +126,11 @@ def main():
         from src.storage import ExcelStorage
         storage = ExcelStorage(args.data)
         snapshots = storage.get_rank_history()
+    elif args.data:
+        # 파일 경로 지정했지만 파일이 없는 경우
+        print(f"⚠️ 파일을 찾을 수 없음: {args.data}")
+        print("🎭 데모 데이터로 대체합니다...")
+        snapshots = generate_demo_data()
     else:
         print("🎭 Using demo data...")
         snapshots = generate_demo_data()

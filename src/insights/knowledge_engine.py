@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Callable
+from typing import ClassVar, Dict, List, Optional, Any, Callable
 
 import yaml
 
@@ -162,7 +162,7 @@ class KnowledgeEngine:
     """
     
     # Default rule definitions (embedded for standalone use)
-    DEFAULT_RULES = {
+    DEFAULT_RULES: ClassVar[Dict[str, dict]] = {
         "R001_stable_leader": {
             "name": "Stable Leader",
             "description": "TopN에서 연속 N일 이상 유지하는 제품",

@@ -109,7 +109,7 @@ python run_dashboard.py --demo
 python run_dashboard.py --data data/ranking_data.xlsx
 ```
 
-**접속**: http://localhost:5000
+**접속**: [http://localhost:5000](http://localhost:5000)
 
 | 페이지 | URL | 설명 |
 |--------|-----|------|
