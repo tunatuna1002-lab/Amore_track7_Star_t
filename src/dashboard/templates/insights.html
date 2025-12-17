@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}인사이트 - LANEIGE Ranking Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">인사이트</h1>
+            <p class="text-gray-500 mt-1">AI 기반 순위 분석 인사이트</p>
+        </div>
+        <button onclick="loadInsights()" class="px-4 py-2 bg-laneige-600 text-white rounded-lg hover:bg-laneige-700 transition-colors">
+            새로고침
+        </button>
+    </div>
+
+    <!-- Insight Tags -->
+    <div class="flex flex-wrap gap-2">
+        <button onclick="filterByTag('')" class="tag-filter px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200" data-tag="">
+            전체
+        </button>
+        <button onclick="filterByTag('stable_leader')" class="tag-filter px-4 py-2 rounded-full text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200" data-tag="stable_leader">
+            🏆 Stable Leader
+        </button>
+        <button onclick="filterByTag('rising_star')" class="tag-filter px-4 py-2 rounded-full text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200" data-tag="rising_star">
+            📈 Rising Star
+        </button>
+        <button onclick="filterByTag('at_risk')" class="tag-filter px-4 py-2 rounded-full text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200" data-tag="at_risk">
+            ⚠️ At Risk
+        </button>
+        <button onclick="filterByTag('new_entrant')" class="tag-filter px-4 py-2 rounded-full text-sm font-medium bg-purple-100 text-purple-700 hover:bg-purple-200" data-tag="new_entrant">
+            🆕 New Entrant
+        </button>
+        <button onclick="filterByTag('recent_exit')" class="tag-filter px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200" data-tag="recent_exit">
+            📤 Recent Exit
+        </button>
+    </div>
+
+    <!-- Insights Count -->
+    <p class="text-gray-600">
+        <span id="insightCount" class="font-bold text-laneige-600">0</span>개 인사이트
+    </p>
+
+    <!-- Insights Grid -->
+    <div id="insightsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="col-span-full text-center py-12 text-gray-500">
+            <div class="loading">인사이트 로딩 중...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let allInsights = [];
+    let currentTag = '';
+
+    async function loadInsights() {
+        try {
+            const res = await fetch('/api/insights');
+            const data = await res.json();
+
+            if (data.success) {
+                allInsights = data.data;
+                renderInsights();
+            }
+        } catch (error) {
+            console.error('Error loading insights:', error);
+            document.getElementById('insightsGrid').innerHTML = `
+                <div class="col-span-full text-center py-12 text-gray-500">
+                    인사이트를 로드할 수 없습니다.
+                </div>
+            `;
+        }
+    }
+
+    function filterByTag(tag) {
+        currentTag = tag;
+        
+        // Update button styles
+        document.querySelectorAll('.tag-filter').forEach(btn => {
+            const btnTag = btn.dataset.tag;
+            if (btnTag === tag) {
+                btn.classList.add('ring-2', 'ring-offset-2', 'ring-laneige-500');
+            } else {
+                btn.classList.remove('ring-2', 'ring-offset-2', 'ring-laneige-500');
+            }
+        });
+
+        renderInsights();
+    }
+
+    function renderInsights() {
+        const grid = document.getElementById('insightsGrid');
+        
+        let filtered = allInsights;
+        if (currentTag) {
+            filtered = allInsights.filter(i => i.tag === currentTag);
+        }
+
+        document.getElementById('insightCount').textContent = filtered.length;
+
+        if (!filtered || filtered.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full text-center py-12 text-gray-500">
+                    ${currentTag ? '해당 태그의 인사이트가 없습니다.' : '인사이트가 없습니다. 더 많은 데이터가 필요합니다.'}
+                </div>
+            `;
+            return;
+        }
+
+        grid.innerHTML = filtered.map(insight => `
+            <div class="bg-white rounded-xl shadow-sm p-6 card-hover transition-all duration-200 border-l-4 ${getTagBorderColor(insight.tag)}">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-2xl">${getTagEmoji(insight.tag)}</span>
+                        <span class="px-2 py-1 text-xs font-medium rounded-full ${getTagBgColor(insight.tag)}">
+                            ${formatTag(insight.tag)}
+                        </span>
+                    </div>
+                    <span class="text-xs text-gray-400">${insight.matched_at ? insight.matched_at.slice(0, 10) : ''}</span>
+                </div>
+                
+                <h3 class="mt-4 text-lg font-semibold text-gray-900">
+                    ${insight.product_name || 'Unknown Product'}
+                </h3>
+                
+                <p class="mt-2 text-gray-600">
+                    ${insight.message || ''}
+                </p>
+                
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                        ${insight.market === 'amazon_us' ? 'Amazon US' : insight.market === 'cosme_jp' ? '@cosme' : insight.market || '-'}
+                    </span>
+                    <span class="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                        ${insight.category_key || '-'}
+                    </span>
+                    ${insight.confidence ? `
+                        <span class="px-2 py-1 text-xs ${
+                            insight.confidence === 'high' ? 'bg-green-100 text-green-700' :
+                            insight.confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-gray-100 text-gray-600'
+                        } rounded">
+                            신뢰도: ${insight.confidence}
+                        </span>
+                    ` : ''}
+                </div>
+
+                ${insight.evidence ? `
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg">
+                        <p class="text-xs font-medium text-gray-500 mb-1">근거:</p>
+                        <p class="text-sm text-gray-600">
+                            ${Object.entries(insight.evidence).slice(0, 3).map(([k, v]) => 
+                                `<span class="mr-3">${k}: <strong>${v}</strong></span>`
+                            ).join('')}
+                        </p>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+
+    function getTagEmoji(tag) {
+        const emojis = {
+            'stable_leader': '🏆',
+            'rising_star': '📈',
+            'at_risk': '⚠️',
+            'new_entrant': '🆕',
+            'recent_exit': '📤',
+        };
+        return emojis[tag] || '📊';
+    }
+
+    function formatTag(tag) {
+        const names = {
+            'stable_leader': 'Stable Leader',
+            'rising_star': 'Rising Star',
+            'at_risk': 'At Risk',
+            'new_entrant': 'New Entrant',
+            'recent_exit': 'Recent Exit',
+        };
+        return names[tag] || tag;
+    }
+
+    function getTagBgColor(tag) {
+        const colors = {
+            'stable_leader': 'bg-green-100 text-green-700',
+            'rising_star': 'bg-blue-100 text-blue-700',
+            'at_risk': 'bg-red-100 text-red-700',
+            'new_entrant': 'bg-purple-100 text-purple-700',
+            'recent_exit': 'bg-gray-100 text-gray-700',
+        };
+        return colors[tag] || 'bg-gray-100 text-gray-700';
+    }
+
+    function getTagBorderColor(tag) {
+        const colors = {
+            'stable_leader': 'border-green-500',
+            'rising_star': 'border-blue-500',
+            'at_risk': 'border-red-500',
+            'new_entrant': 'border-purple-500',
+            'recent_exit': 'border-gray-400',
+        };
+        return colors[tag] || 'border-gray-300';
+    }
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadInsights();
+        filterByTag(''); // Select "All" by default
+    });
+</script>
+{% endblock %}
